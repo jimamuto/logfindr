@@ -11,6 +11,11 @@ echo "Starting Fluent Bit..."
 /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &
 FLUENTBIT_PID=$!
 
-trap "kill $LOGFINDR_PID $FLUENTBIT_PID 2>/dev/null; exit 0" SIGTERM SIGINT
+cleanup() {
+    kill "$LOGFINDR_PID" "$FLUENTBIT_PID" 2>/dev/null
+    exit 0
+}
 
-wait $LOGFINDR_PID $FLUENTBIT_PID
+trap cleanup 15 2
+
+wait "$LOGFINDR_PID" "$FLUENTBIT_PID"
