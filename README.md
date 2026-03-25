@@ -47,13 +47,13 @@ go build -o logfindr ./cmd/logfindr/
 ```mermaid
 graph TD
     subgraph logfindr container
-        FB[Fluent Bit\ncollect] -->|POST /ingest| API[Go Ingest API\nport 8080]
-        API --> DB[(SQLite\nWAL mode)]
-        DB --> VOL[/data volume\npersistent]
+        FB["Fluent Bit<br>collect"] -->|POST /ingest| API["Go Ingest API<br>port 8080"]
+        API --> DB[("SQLite<br>WAL mode")]
+        DB --> VOL["data volume<br>persistent"]
     end
 
-    DOCKER[Docker Socket\nContainer Logs] --> FB
-    CLI[logfindr CLI] --> DB
+    DOCKER["Docker Socket<br>Container Logs"] --> FB
+    CLI["logfindr CLI"] --> DB
 ```
 
 **Fluent Bit** (C) collects logs from Docker containers via the Docker socket and forwards them over HTTP to the **Go binary**, which compresses them with Zstd and stores them in SQLite.
