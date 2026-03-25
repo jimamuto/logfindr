@@ -44,24 +44,16 @@ go build -o logfindr ./cmd/logfindr/
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│              logfindr container              │
-│                                             │
-│  ┌───────────┐         ┌─────────────────┐  │
-│  │ Fluent Bit │──POST──▶│  Go Ingest API  │  │
-│  │  (collect) │ /ingest │   (port 8080)   │  │
-│  └───────────┘         └────────┬────────┘  │
-│        ▲                        │            │
-│        │                        ▼            │
-│   Docker socket          ┌───────────┐      │
-│   /container logs        │  SQLite   │      │
-│                          │ (WAL mode)│      │
-│                          └───────────┘      │
-│                               │              │
-│                          /data volume        │
-│                          (persistent)        │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph logfindr container
+        FB[Fluent Bit\ncollect] -->|POST /ingest| API[Go Ingest API\nport 8080]
+        API --> DB[(SQLite\nWAL mode)]
+        DB --> VOL[/data volume\npersistent]
+    end
+
+    DOCKER[Docker Socket\nContainer Logs] --> FB
+    CLI[logfindr CLI] --> DB
 ```
 
 **Fluent Bit** (C) collects logs from Docker containers via the Docker socket and forwards them over HTTP to the **Go binary**, which compresses them with Zstd and stores them in SQLite.
