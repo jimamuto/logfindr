@@ -298,6 +298,12 @@ logfindr/
 
 **For team leads:** Audit any error from weeks ago. Persistent logs on a Docker volume mean nothing vanishes when containers restart.
 
+See [docs/USE_CASES.md](docs/USE_CASES.md) for detailed examples with code snippets covering container logging, AI agent debugging, CI/CD pipelines, regression comparison, and more.
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full sprint plan and MVP goals.
+
 ## License
 
 MIT
