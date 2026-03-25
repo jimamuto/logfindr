@@ -1,0 +1,31 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/logfindr
+
+# Test artifacts
+test.db
+test.db-wal
+test.db-shm
+*.db
+*.db-wal
+*.db-shm
+
+# Go
+/vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
