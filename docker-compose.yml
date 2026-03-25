@@ -1,14 +1,12 @@
 services:
   logfindr:
-    build: .
+    image: jimamuto/logfindr:latest
     container_name: logfindr
     ports:
       - "8080:8080"
       - "24224:24224"
     volumes:
       - logfindr-data:/data
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
 
 volumes:
