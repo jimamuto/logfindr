@@ -8,7 +8,7 @@ LOGFINDR_PID=$!
 sleep 1
 
 echo "Starting Fluent Bit..."
-/fluent-bit/bin/fluent-bit -c /fluent-bit/etc/fluent-bit.conf &
+/opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &
 FLUENTBIT_PID=$!
 
 trap "kill $LOGFINDR_PID $FLUENTBIT_PID 2>/dev/null; exit 0" SIGTERM SIGINT
