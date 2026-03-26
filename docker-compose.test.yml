@@ -1,0 +1,22 @@
+services:
+  logfindr:
+    image: jimamuto/logfindr:latest
+    container_name: logfindr-test
+    ports:
+      - "8080:8080"
+      - "24224:24224"
+    volumes:
+      - logfindr-test-data:/data
+    restart: unless-stopped
+
+  log-seeder:
+    image: curlimages/curl:8.10.1
+    container_name: logfindr-test-seeder
+    command: ["/bin/sh", "/seed.sh"]
+    volumes:
+      - ./scripts/test-seeder.sh:/seed.sh:ro
+    depends_on:
+      - logfindr
+
+volumes:
+  logfindr-test-data:
