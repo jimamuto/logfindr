@@ -1,0 +1,41 @@
+services:
+  logfindr:
+    image: jimamuto/logfindr:latest
+    container_name: logfindr-fulltest
+    ports:
+      - "8080:8080"
+      - "24224:24224"
+    volumes:
+      - logfindr-fulltest-data:/data
+    restart: unless-stopped
+
+  stable-app:
+    image: alpine:3.20
+    container_name: logfindr-stable-app
+    command: ["/bin/sh", "/stable-app.sh"]
+    volumes:
+      - ./scripts/stable-app.sh:/stable-app.sh:ro
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: stable-app
+    depends_on:
+      - logfindr
+
+  broken-app:
+    image: alpine:3.20
+    container_name: logfindr-broken-app
+    command: ["/bin/sh", "/broken-app.sh"]
+    volumes:
+      - ./scripts/broken-app.sh:/broken-app.sh:ro
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: broken-app
+    depends_on:
+      - logfindr
+
+volumes:
+  logfindr-fulltest-data:
