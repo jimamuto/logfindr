@@ -20,7 +20,7 @@ var serveCmd = &cobra.Command{
 		}
 		defer database.Close()
 
-		srv := ingest.New(database, serveAddr)
+		srv := ingest.New(database, serveAddr, dbPath)
 		return srv.Start()
 	},
 }

@@ -171,6 +171,34 @@ func (d *DB) Stats(dbPath string) (*Stats, error) {
 	return &s, nil
 }
 
+// ContainerInfo holds summary info about a container's logs.
+type ContainerInfo struct {
+	ContainerName string `json:"container_name"`
+	Count         int64  `json:"count"`
+	LastSeen      string `json:"last_seen"`
+}
+
+// ListContainers returns all distinct container names with their log counts.
+func (d *DB) ListContainers() ([]ContainerInfo, error) {
+	rows, err := d.conn.Query(
+		`SELECT container_name, COUNT(*) as cnt, MAX(timestamp) as last_seen
+		 FROM logs WHERE container_name != '' GROUP BY container_name ORDER BY last_seen DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var containers []ContainerInfo
+	for rows.Next() {
+		var c ContainerInfo
+		if err := rows.Scan(&c.ContainerName, &c.Count, &c.LastSeen); err != nil {
+			return nil, err
+		}
+		containers = append(containers, c)
+	}
+	return containers, rows.Err()
+}
+
 // SetActiveTask sets the current active task ID for tagging incoming logs.
 func (d *DB) SetActiveTask(taskID string) error {
 	_, err := d.conn.Exec(

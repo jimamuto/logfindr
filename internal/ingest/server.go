@@ -1,25 +1,31 @@
 package ingest
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/logsport/logfindr/internal/db"
 )
 
+//go:embed dashboard.html
+var dashboardHTML []byte
+
 // Server handles log ingestion from Fluent Bit.
 type Server struct {
-	db   *db.DB
-	addr string
+	db     *db.DB
+	dbPath string
+	addr   string
 }
 
 // New creates a new ingest server.
-func New(database *db.DB, addr string) *Server {
-	return &Server{db: database, addr: addr}
+func New(database *db.DB, addr string, dbPath string) *Server {
+	return &Server{db: database, addr: addr, dbPath: dbPath}
 }
 
 type ingestPayload struct {
@@ -128,12 +134,114 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"status":"healthy"}`)
 }
 
+func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(dashboardHTML)
+}
+
+type logResponse struct {
+	ID            int64  `json:"id"`
+	Timestamp     string `json:"timestamp"`
+	ContainerID   string `json:"container_id"`
+	ContainerName string `json:"container_name"`
+	TaskID        string `json:"task_id"`
+	Severity      string `json:"severity"`
+	Message       string `json:"message"`
+	RawSize       int64  `json:"raw_size"`
+	Labels        string `json:"labels"`
+	Source        string `json:"source"`
+}
+
+func (s *Server) handleAPILogs(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limit := 100
+	if v := q.Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	var since time.Duration
+	if v := q.Get("since"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			since = d
+		}
+	}
+
+	entries, err := s.db.Query(db.QueryFilter{
+		TaskID:    q.Get("task"),
+		Container: q.Get("container"),
+		Severity:  q.Get("severity"),
+		Since:     since,
+		Limit:     limit,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp := make([]logResponse, len(entries))
+	for i, e := range entries {
+		resp[i] = logResponse{
+			ID:            e.ID,
+			Timestamp:     e.Timestamp.Format(time.RFC3339),
+			ContainerID:   e.ContainerID,
+			ContainerName: e.ContainerName,
+			TaskID:        e.TaskID,
+			Severity:      e.Severity,
+			Message:       string(e.Message),
+			RawSize:       e.RawSize,
+			Labels:        e.Labels,
+			Source:        e.Source,
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) handleAPITasks(w http.ResponseWriter, r *http.Request) {
+	tasks, err := s.db.ListTasks()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
+}
+
+func (s *Server) handleAPIContainers(w http.ResponseWriter, r *http.Request) {
+	containers, err := s.db.ListContainers()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(containers)
+}
+
+func (s *Server) handleAPIStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := s.db.Stats(s.dbPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
+}
+
 // Start begins listening for log ingestion.
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ingest", s.handleIngest)
 	mux.HandleFunc("/health", s.handleHealth)
+	mux.HandleFunc("/api/logs", s.handleAPILogs)
+	mux.HandleFunc("/api/tasks", s.handleAPITasks)
+	mux.HandleFunc("/api/stats", s.handleAPIStats)
+	mux.HandleFunc("/api/containers", s.handleAPIContainers)
+	mux.HandleFunc("/", s.handleDashboard)
 
 	fmt.Printf("logfindr ingest server listening on %s\n", s.addr)
+	fmt.Printf("dashboard available at http://localhost%s\n", s.addr)
 	return http.ListenAndServe(s.addr, mux)
 }
